@@ -7,6 +7,7 @@
 #include <QFileDialog>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QTimer>
 #include <stdio.h>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -16,10 +17,10 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow){
     ui->setupUi(this);
 
-    QWidget *widget = new QWidget;
+    widget = new QWidget;
     setCentralWidget(widget);
 
-    fileLabelMsg = QString("Current Selected File: %1").arg(currentFileName);
+    fileLabelMsg = QString("Current Selected File: [New File]");
     fileLabel = new QLabel(fileLabelMsg);
     fileLabel->setAlignment(Qt::AlignHCenter);
 
@@ -27,14 +28,21 @@ MainWindow::MainWindow(QWidget *parent)
     notesLabel = new QLabel(notesLabelMsg);
     notesLabel->setAlignment(Qt::AlignHCenter);
 
+    container = new QWidget();
+    btnsLayout = new QVBoxLayout(container);
+    btnsLayout->addSpacing(0);
+    btnsLayout->setContentsMargins(0, 0, 0 , 0);
+    btnsLayout->addStretch(0);
+    btnsLayout->setDirection(QBoxLayout::BottomToTop);
+
     notesBox = new QScrollArea(widget);
-    notesBox->setWidget(notesLabel);
+    notesBox->setWidget(container);
     notesBox->setWidgetResizable(true);
 
     inputNote = new QLineEdit(widget);
     connect(inputNote, SIGNAL (returnPressed()), this, SLOT (updateFileContent()));
 
-    QVBoxLayout *layout = new QVBoxLayout;
+    layout = new QVBoxLayout;
     layout->setContentsMargins(5, 5, 5, 5);
     layout->addWidget(fileLabel);
     layout->addWidget(notesBox);
@@ -56,13 +64,24 @@ MainWindow::~MainWindow(){
 void MainWindow::updateFileContent(){
     notes += inputNote->text();
     notes += "\n";
-    notesLabel->setText(notes.join(" "));
+    //notesLabel->setText(notes.join(" "));
+    QPushButton* newNote = new QPushButton(inputNote->text(), container);
+    connect(newNote, SIGNAL (clicked()), this, SLOT (updateInputNoteText()));
+    //newNote->setStyleSheet("border: 0px;");
+    notesBtns.push_back(newNote);
+    btnsLayout->addWidget(newNote);
     if(currentFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)){
         QTextStream stream(&currentFile);
         stream << inputNote->text() << Qt::endl;
     }
     inputNote->clear();
     currentFile.close();
+}
+
+void MainWindow::updateInputNoteText(){
+    QPushButton* button = qobject_cast<QPushButton*>(sender());
+    inputNote->setText(button->text());
+    QTimer::singleShot(0, inputNote, SLOT(setFocus()));
 }
 
 void MainWindow::openFile(){
@@ -75,10 +94,29 @@ void MainWindow::openFile(){
 
     if (!currentFile.open(QIODevice::ReadOnly | QIODevice::Text))
         return;
+
     QTextStream in(&currentFile);
     notes = QStringList("");
+
+    if (btnsLayout != NULL){
+        QLayoutItem* item;
+        while ((item = btnsLayout->takeAt(0)) != NULL){
+            delete item->widget();
+            delete item;
+        }
+    }
+    notesBtns.clear();
+
     while(!currentFile.atEnd()){
-        notes += currentFile.readLine();
+        QString line = currentFile.readLine();
+        if(line != "\n"){
+            notes += line;
+            QPushButton* newNote = new QPushButton(line.trimmed(), container);
+            connect(newNote, SIGNAL (clicked()), this, SLOT (updateInputNoteText()));
+            //newNote->setStyleSheet("padding: 0px; margin: 0px;");
+            notesBtns.push_back(newNote);
+            btnsLayout->addWidget(newNote, Qt::AlignTop);
+        }
     }
     notesLabel->setText(notes.join(" "));
 
@@ -105,7 +143,25 @@ void MainWindow::saveToFile(){
     }
 }
 
+void MainWindow::newFile(){
+    notes = QStringList("");
+    if (btnsLayout != NULL){
+        QLayoutItem* item;
+        while ((item = btnsLayout->takeAt(0)) != NULL){
+            delete item->widget();
+            delete item;
+        }
+    }
+    notesBtns.clear();
+    fileLabelMsg = QString("Current Selected File: [New File]");
+    fileLabel->setText(fileLabelMsg);
+}
+
 void MainWindow::createActions(){
+    newFileAct = new QAction(tr("&New"));
+    newFileAct->setStatusTip(tr("Create a new file"));
+    connect(newFileAct, &QAction::triggered, this, &MainWindow::newFile);
+
     openFileAct = new QAction(tr("&Open"));
     openFileAct->setStatusTip(tr("Open a file"));
     connect(openFileAct, &QAction::triggered, this, &MainWindow::openFile);
@@ -117,6 +173,7 @@ void MainWindow::createActions(){
 
 void MainWindow::createMenus(){
     fileMenu = menuBar()->addMenu(tr("&File"));
+    fileMenu->addAction(newFileAct);
     fileMenu->addAction(openFileAct);
     fileMenu->addAction(saveFileAct);
 }

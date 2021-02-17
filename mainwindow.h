@@ -6,6 +6,9 @@
 #include <QFile>
 #include <QLineEdit>
 #include <QScrollArea>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include <vector>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -22,8 +25,12 @@ public:
     void createActions();
 
 private:
-    Ui::MainWindow *ui;
+    Ui::MainWindow* ui;
+    QVBoxLayout* layout;
+    QWidget* widget;
+
     QMenu* fileMenu;
+    QAction* newFileAct;
     QAction* openFileAct;
     QAction* saveFileAct;
 
@@ -40,8 +47,14 @@ private:
     QLineEdit* inputNote;
     QString inputText;
 
+    QWidget* container;
+    QVBoxLayout* btnsLayout;
+    std::vector<QPushButton*> notesBtns;
+
 private slots:
     void updateFileContent();
+    void updateInputNoteText();
+    void newFile();
     void openFile();
     void saveToFile();
 
