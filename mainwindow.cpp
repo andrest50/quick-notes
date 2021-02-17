@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QFileDialog>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <stdio.h>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -22,7 +23,7 @@ MainWindow::MainWindow(QWidget *parent)
     fileLabel = new QLabel(fileLabelMsg);
     fileLabel->setAlignment(Qt::AlignHCenter);
 
-    QString notesLabelMsg = QString("Notes:");
+    QString notesLabelMsg = QString("Type a note into the textbox and it will appear here.");
     notesLabel = new QLabel(notesLabelMsg);
     notesLabel->setAlignment(Qt::AlignHCenter);
 
@@ -53,14 +54,14 @@ MainWindow::~MainWindow(){
 }
 
 void MainWindow::updateFileContent(){
+    notes += inputNote->text();
+    notes += "\n";
+    notesLabel->setText(notes.join(" "));
     if(currentFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)){
         QTextStream stream(&currentFile);
         stream << inputNote->text() << Qt::endl;
-        notes += inputNote->text();
-        notes += "\n";
-        notesLabel->setText(notes.join(" "));
-        inputNote->clear();
     }
+    inputNote->clear();
     currentFile.close();
 }
 
@@ -84,14 +85,39 @@ void MainWindow::openFile(){
     currentFile.close();
 }
 
+void MainWindow::saveToFile(){
+    QFileDialog fileDialog(this, Qt::Dialog);
+    currentFileName = QFileDialog::getSaveFileName(this,
+        tr("Save Notes"), "/Andres/Text-Files", tr("Text Files (*.txt)"));
+    if(currentFileName.isEmpty())
+        return;
+    else {
+        currentFile.setFileName(currentFileName);
+        fileLabelMsg = QString("Current Selected File: %1").arg(currentFileName);
+        fileLabel->setText(fileLabelMsg);
+        if (!currentFile.open(QIODevice::WriteOnly)) {
+            QMessageBox::information(this, tr("Unable to open file"),
+                currentFile.errorString());
+            return;
+        }
+        QTextStream out(&currentFile);
+        out << notes.join("");
+    }
+}
+
 void MainWindow::createActions(){
     openFileAct = new QAction(tr("&Open"));
     openFileAct->setStatusTip(tr("Open a file"));
     connect(openFileAct, &QAction::triggered, this, &MainWindow::openFile);
+
+    saveFileAct = new QAction(tr("&Save As"));
+    saveFileAct->setStatusTip(tr("Save a file"));
+    connect(saveFileAct, &QAction::triggered, this, &MainWindow::saveToFile);
 }
 
 void MainWindow::createMenus(){
     fileMenu = menuBar()->addMenu(tr("&File"));
     fileMenu->addAction(openFileAct);
+    fileMenu->addAction(saveFileAct);
 }
 

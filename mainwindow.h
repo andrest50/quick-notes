@@ -25,6 +25,7 @@ private:
     Ui::MainWindow *ui;
     QMenu* fileMenu;
     QAction* openFileAct;
+    QAction* saveFileAct;
 
     QLabel* fileLabel;
     QString fileLabelMsg;
@@ -42,6 +43,7 @@ private:
 private slots:
     void updateFileContent();
     void openFile();
+    void saveToFile();
 
 };
 #endif // MAINWINDOW_H
