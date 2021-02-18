@@ -55,7 +55,12 @@ private:
 
     QMenu* noteMenu;
     QAction* deleteNoteAct;
+    QAction* highlightNoteAct;
+    QAction* editNoteAct;
     QNoteButton* noteClicked;
+
+    QNoteButton* noteToEdit;
+    bool editMode;
 
 private slots:
     void updateFileContent();
@@ -66,6 +71,8 @@ private slots:
     void saveFile();
     void saveToFile();
     void deleteNote();
+    void highlightNote();
+    void editNote();
 
 };
 #endif // MAINWINDOW_H

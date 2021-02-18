@@ -13,6 +13,12 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+/*
+ * To Do:
+ * - Indicate when in edit mode
+ * - Dark mode?
+ */
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow){
@@ -53,6 +59,8 @@ MainWindow::MainWindow(QWidget *parent)
     createActions();
     createMenus();
 
+    editMode = false;
+
     setWindowTitle(tr("Quick Notes"));
     setMinimumSize(160, 160);
     resize(480, 320);
@@ -60,6 +68,32 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow(){
     delete ui;
+}
+
+void MainWindow::editNote(){
+    inputNote->setText(noteClicked->text());
+    QTimer::singleShot(0, inputNote, SLOT(setFocus()));
+    if(editMode == true)
+        noteToEdit->setStyleSheet("background-color: light gray;");
+    editMode = true;
+    if(noteToEdit != noteClicked){
+        noteToEdit = noteClicked;
+        noteToEdit->setStyleSheet("background-color: #ABEBC6;");
+    }
+    else {
+        editMode = false;
+    }
+}
+
+void MainWindow::highlightNote(){
+    if(!noteClicked->isCheckable()){
+        noteClicked->setStyleSheet("background-color: #F9E79F;");
+        noteClicked->setCheckable(true);
+    }
+    else {
+        noteClicked->setStyleSheet("background-color: light gray;");
+        noteClicked->setCheckable(false);
+    }
 }
 
 void MainWindow::deleteNote(){
@@ -76,31 +110,49 @@ void MainWindow::noteOptions(){
 
     noteClicked = qobject_cast<QNoteButton*>(sender());
 
+    highlightNoteAct = new QAction(tr("&Highlight"));
+    highlightNoteAct->setStatusTip(tr("Highlight note"));
+    connect(highlightNoteAct, &QAction::triggered, this, &MainWindow::highlightNote);
+
+    editNoteAct = new QAction(tr("&Edit"));
+    editNoteAct->setStatusTip(tr("Edit note"));
+    connect(editNoteAct, &QAction::triggered, this, &MainWindow::editNote);
+
     deleteNoteAct = new QAction(tr("&Delete"));
     deleteNoteAct->setStatusTip(tr("Delete note"));
     connect(deleteNoteAct, &QAction::triggered, this, &MainWindow::deleteNote);
 
     noteMenu = new QMenu(tr("Note Menu"), this);
+    noteMenu->addAction(highlightNoteAct);
+    noteMenu->addAction(editNoteAct);
     noteMenu->addAction(deleteNoteAct);
     noteMenu->exec(mapTo(0, QCursor::pos()));
 }
 
 void MainWindow::updateFileContent(){
-    notes += inputNote->text();
-    notes += "\n";
-    //notesLabel->setText(notes.join(" "));
-    QNoteButton* newNote = new QNoteButton(inputNote->text(), container);
-    connect(newNote, SIGNAL (clicked()), this, SLOT (updateInputNoteText()));
-    connect(newNote, SIGNAL (rightClicked()), this, SLOT (noteOptions()));
-    //newNote->setStyleSheet("border: 0px;");
-    notesBtns.push_back(newNote);
-    btnsLayout->addWidget(newNote);
-    if(currentFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)){
-        QTextStream stream(&currentFile);
-        stream << inputNote->text() << Qt::endl;
+    if(editMode){
+        noteToEdit->setText(inputNote->text());
+        editMode = false;
+        noteToEdit->setStyleSheet("background-color: light gray;");
+        noteToEdit = NULL;
+        inputNote->clear();
     }
-    inputNote->clear();
-    currentFile.close();
+    else {
+        notes += inputNote->text();
+        notes += "\n";
+        QNoteButton* newNote = new QNoteButton(inputNote->text(), container);
+        connect(newNote, SIGNAL (clicked()), this, SLOT (updateInputNoteText()));
+        connect(newNote, SIGNAL (rightClicked()), this, SLOT (noteOptions()));
+        //newNote->setStyleSheet("border: 0px;");
+        notesBtns.push_back(newNote);
+        btnsLayout->addWidget(newNote);
+        if(currentFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)){
+            QTextStream stream(&currentFile);
+            stream << inputNote->text() << Qt::endl;
+        }
+        inputNote->clear();
+        currentFile.close();
+    }
 }
 
 void MainWindow::updateInputNoteText(){
@@ -110,6 +162,7 @@ void MainWindow::updateInputNoteText(){
 }
 
 void MainWindow::openFile(){
+    editMode = false;
     QFileDialog fileDialog(this, Qt::Dialog);
     currentFileName = QFileDialog::getOpenFileName(this,
         tr("Open File"), "/Andres/Text-Files", tr("Text Files (*.txt)"));
@@ -145,7 +198,6 @@ void MainWindow::openFile(){
         }
     }
     notesLabel->setText(notes.join(" "));
-
     currentFile.close();
 }
 
@@ -193,6 +245,7 @@ void MainWindow::saveToFile(){
 }
 
 void MainWindow::newFile(){
+    editMode = false;
     notes = QStringList("");
     if (btnsLayout != NULL){
         QLayoutItem* item;
