@@ -10,10 +10,12 @@ CONFIG += c++11
 
 SOURCES += \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    qnotebutton.cpp
 
 HEADERS += \
-    mainwindow.h
+    mainwindow.h \
+    qnotebutton.h
 
 FORMS += \
     mainwindow.ui

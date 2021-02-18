@@ -8,6 +8,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QTimer>
+#include <QList>
 #include <stdio.h>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -61,12 +62,36 @@ MainWindow::~MainWindow(){
     delete ui;
 }
 
+void MainWindow::deleteNote(){
+    auto itr = std::find_if(notesBtns.begin(), notesBtns.end(), [this](QNoteButton* notesBtns)
+        {return notesBtns->text() == noteClicked->text();});
+    if(itr != notesBtns.end()){
+        notesBtns.erase(itr);
+    }
+    delete noteClicked;
+}
+
+void MainWindow::noteOptions(){
+    qDebug() << "Right click";
+
+    noteClicked = qobject_cast<QNoteButton*>(sender());
+
+    deleteNoteAct = new QAction(tr("&Delete"));
+    deleteNoteAct->setStatusTip(tr("Delete note"));
+    connect(deleteNoteAct, &QAction::triggered, this, &MainWindow::deleteNote);
+
+    noteMenu = new QMenu(tr("Note Menu"), this);
+    noteMenu->addAction(deleteNoteAct);
+    noteMenu->exec(mapTo(0, QCursor::pos()));
+}
+
 void MainWindow::updateFileContent(){
     notes += inputNote->text();
     notes += "\n";
     //notesLabel->setText(notes.join(" "));
-    QPushButton* newNote = new QPushButton(inputNote->text(), container);
+    QNoteButton* newNote = new QNoteButton(inputNote->text(), container);
     connect(newNote, SIGNAL (clicked()), this, SLOT (updateInputNoteText()));
+    connect(newNote, SIGNAL (rightClicked()), this, SLOT (noteOptions()));
     //newNote->setStyleSheet("border: 0px;");
     notesBtns.push_back(newNote);
     btnsLayout->addWidget(newNote);
@@ -79,7 +104,7 @@ void MainWindow::updateFileContent(){
 }
 
 void MainWindow::updateInputNoteText(){
-    QPushButton* button = qobject_cast<QPushButton*>(sender());
+    QNoteButton* button = qobject_cast<QNoteButton*>(sender());
     inputNote->setText(button->text());
     QTimer::singleShot(0, inputNote, SLOT(setFocus()));
 }
@@ -111,8 +136,9 @@ void MainWindow::openFile(){
         QString line = currentFile.readLine();
         if(line != "\n"){
             notes += line;
-            QPushButton* newNote = new QPushButton(line.trimmed(), container);
+            QNoteButton* newNote = new QNoteButton(line.trimmed(), container);
             connect(newNote, SIGNAL (clicked()), this, SLOT (updateInputNoteText()));
+            connect(newNote, SIGNAL (rightClicked()), this, SLOT (noteOptions()));
             //newNote->setStyleSheet("padding: 0px; margin: 0px;");
             notesBtns.push_back(newNote);
             btnsLayout->addWidget(newNote, Qt::AlignTop);
@@ -120,6 +146,29 @@ void MainWindow::openFile(){
     }
     notesLabel->setText(notes.join(" "));
 
+    currentFile.close();
+}
+
+void MainWindow:: saveFile(){
+    qDebug() << "saveFile";
+
+    if (!currentFile.open(QIODevice::WriteOnly)) {
+        QMessageBox::information(this, tr("No file to save"),
+            currentFile.errorString());
+        return;
+    }
+    QTextStream out(&currentFile);
+    notes = QStringList("");
+    if (btnsLayout != NULL){
+        qDebug() << QString::number(notesBtns.size());
+        for (int i = 0; i < notesBtns.size(); i++){
+            if(notesBtns[i]){
+                notes += notesBtns[i]->text();
+                notes += "\n";
+            }
+        }
+    }
+    out << notes.join("");
     currentFile.close();
 }
 
@@ -166,9 +215,13 @@ void MainWindow::createActions(){
     openFileAct->setStatusTip(tr("Open a file"));
     connect(openFileAct, &QAction::triggered, this, &MainWindow::openFile);
 
-    saveFileAct = new QAction(tr("&Save As"));
+    saveFileAct = new QAction(tr("&Save"));
     saveFileAct->setStatusTip(tr("Save a file"));
-    connect(saveFileAct, &QAction::triggered, this, &MainWindow::saveToFile);
+    connect(saveFileAct, &QAction::triggered, this, &MainWindow::saveFile);
+
+    saveAsFileAct = new QAction(tr("&Save As"));
+    saveAsFileAct->setStatusTip(tr("Save to a file"));
+    connect(saveAsFileAct, &QAction::triggered, this, &MainWindow::saveToFile);
 }
 
 void MainWindow::createMenus(){
@@ -176,5 +229,6 @@ void MainWindow::createMenus(){
     fileMenu->addAction(newFileAct);
     fileMenu->addAction(openFileAct);
     fileMenu->addAction(saveFileAct);
+    fileMenu->addAction(saveAsFileAct);
 }
 

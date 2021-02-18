@@ -9,6 +9,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <vector>
+#include "qnotebutton.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -33,6 +34,7 @@ private:
     QAction* newFileAct;
     QAction* openFileAct;
     QAction* saveFileAct;
+    QAction* saveAsFileAct;
 
     QLabel* fileLabel;
     QString fileLabelMsg;
@@ -49,14 +51,21 @@ private:
 
     QWidget* container;
     QVBoxLayout* btnsLayout;
-    std::vector<QPushButton*> notesBtns;
+    QList<QNoteButton*> notesBtns;
+
+    QMenu* noteMenu;
+    QAction* deleteNoteAct;
+    QNoteButton* noteClicked;
 
 private slots:
     void updateFileContent();
     void updateInputNoteText();
+    void noteOptions();
     void newFile();
     void openFile();
+    void saveFile();
     void saveToFile();
+    void deleteNote();
 
 };
 #endif // MAINWINDOW_H
