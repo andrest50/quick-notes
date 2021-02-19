@@ -24,6 +24,7 @@ public:
     ~MainWindow();
     void createMenus();
     void createActions();
+    void clearNotes();
 
 private:
     Ui::MainWindow* ui;
@@ -61,6 +62,10 @@ private:
 
     QNoteButton* noteToEdit;
     bool editMode;
+
+    QHBoxLayout* infoLayout;
+    QLabel* editModeLabel;
+    QLabel* numNotesLabel;
 
 private slots:
     void updateFileContent();

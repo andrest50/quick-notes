@@ -15,7 +15,9 @@
 
 /*
  * To Do:
- * - Indicate when in edit mode
+ * - Add key bindings
+ * - If new file, save should show saveAs
+ * - Refactor code
  * - Dark mode?
  */
 
@@ -49,11 +51,25 @@ MainWindow::MainWindow(QWidget *parent)
     inputNote = new QLineEdit(widget);
     connect(inputNote, SIGNAL (returnPressed()), this, SLOT (updateFileContent()));
 
+    editModeLabel = new QLabel("[Edit]");
+    editModeLabel->setAlignment(Qt::AlignLeft);
+    editModeLabel->setContentsMargins(10, 0, 0, 0);
+    editModeLabel->setVisible(false);
+
+    numNotesLabel = new QLabel("Notes: 0");
+    numNotesLabel->setAlignment(Qt::AlignRight);
+    numNotesLabel->setContentsMargins(0, 0, 10, 0);
+
+    infoLayout = new QHBoxLayout;
+    infoLayout->addWidget(editModeLabel);
+    infoLayout->addWidget(numNotesLabel);
+
     layout = new QVBoxLayout;
     layout->setContentsMargins(5, 5, 5, 5);
     layout->addWidget(fileLabel);
     layout->addWidget(notesBox);
     layout->addWidget(inputNote);
+    layout->addLayout(infoLayout);
     widget->setLayout(layout);
 
     createActions();
@@ -70,18 +86,29 @@ MainWindow::~MainWindow(){
     delete ui;
 }
 
+void MainWindow::clearNotes(){
+    editMode = false;
+    editModeLabel->setVisible(false);
+    inputNote->setText("");
+    notes = QStringList("");
+}
+
 void MainWindow::editNote(){
     inputNote->setText(noteClicked->text());
     QTimer::singleShot(0, inputNote, SLOT(setFocus()));
-    if(editMode == true)
+    if(editMode == true){
         noteToEdit->setStyleSheet("background-color: light gray;");
-    editMode = true;
+    }
+
     if(noteToEdit != noteClicked){
+        editMode = true;
         noteToEdit = noteClicked;
         noteToEdit->setStyleSheet("background-color: #ABEBC6;");
+        editModeLabel->setVisible(true);
     }
     else {
         editMode = false;
+        editModeLabel->setVisible(false);
     }
 }
 
@@ -101,6 +128,8 @@ void MainWindow::deleteNote(){
         {return notesBtns->text() == noteClicked->text();});
     if(itr != notesBtns.end()){
         notesBtns.erase(itr);
+        QString numNotesMsg = QString("Notes: %1").arg(notesBtns.size());
+        numNotesLabel->setText(numNotesMsg);
     }
     delete noteClicked;
 }
@@ -140,12 +169,15 @@ void MainWindow::updateFileContent(){
     else {
         notes += inputNote->text();
         notes += "\n";
+
         QNoteButton* newNote = new QNoteButton(inputNote->text(), container);
         connect(newNote, SIGNAL (clicked()), this, SLOT (updateInputNoteText()));
         connect(newNote, SIGNAL (rightClicked()), this, SLOT (noteOptions()));
         //newNote->setStyleSheet("border: 0px;");
         notesBtns.push_back(newNote);
         btnsLayout->addWidget(newNote);
+        QString numNotesMsg = QString("Notes: %1").arg(notesBtns.size());
+        numNotesLabel->setText(numNotesMsg);
         if(currentFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)){
             QTextStream stream(&currentFile);
             stream << inputNote->text() << Qt::endl;
@@ -162,11 +194,13 @@ void MainWindow::updateInputNoteText(){
 }
 
 void MainWindow::openFile(){
-    editMode = false;
     QFileDialog fileDialog(this, Qt::Dialog);
     currentFileName = QFileDialog::getOpenFileName(this,
         tr("Open File"), "/Andres/Text-Files", tr("Text Files (*.txt)"));
-    currentFile.setFileName(currentFileName);
+    if(currentFileName != "")
+        currentFile.setFileName(currentFileName);
+    else
+        return;
     fileLabelMsg = QString("Current Selected File: %1").arg(currentFileName);
     fileLabel->setText(fileLabelMsg);
 
@@ -174,7 +208,6 @@ void MainWindow::openFile(){
         return;
 
     QTextStream in(&currentFile);
-    notes = QStringList("");
 
     if (btnsLayout != NULL){
         QLayoutItem* item;
@@ -184,6 +217,7 @@ void MainWindow::openFile(){
         }
     }
     notesBtns.clear();
+    clearNotes();
 
     while(!currentFile.atEnd()){
         QString line = currentFile.readLine();
@@ -197,6 +231,8 @@ void MainWindow::openFile(){
             btnsLayout->addWidget(newNote, Qt::AlignTop);
         }
     }
+    QString numNotesMsg = QString("Notes: %1").arg(notesBtns.size());
+    numNotesLabel->setText(numNotesMsg);
     notesLabel->setText(notes.join(" "));
     currentFile.close();
 }
@@ -245,8 +281,7 @@ void MainWindow::saveToFile(){
 }
 
 void MainWindow::newFile(){
-    editMode = false;
-    notes = QStringList("");
+    clearNotes();
     if (btnsLayout != NULL){
         QLayoutItem* item;
         while ((item = btnsLayout->takeAt(0)) != NULL){
