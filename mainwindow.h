@@ -36,6 +36,9 @@ private:
     QAction* openFileAct;
     QAction* saveFileAct;
     QAction* saveAsFileAct;
+    QKeySequence* newFileShortcut;
+    QKeySequence* openFileShortcut;
+    QKeySequence* saveFileShortcut;
 
     QLabel* fileLabel;
     QString fileLabelMsg;
@@ -65,6 +68,7 @@ private:
 
     QHBoxLayout* infoLayout;
     QLabel* editModeLabel;
+    QLabel* savingLabel;
     QLabel* numNotesLabel;
 
 private slots:
@@ -78,6 +82,7 @@ private slots:
     void deleteNote();
     void highlightNote();
     void editNote();
+    void displaySaving();
 
 };
 #endif // MAINWINDOW_H

@@ -15,8 +15,7 @@
 
 /*
  * To Do:
- * - Add key bindings
- * - If new file, save should show saveAs
+ * - Combine notes from multiple files
  * - Refactor code
  * - Dark mode?
  */
@@ -56,12 +55,18 @@ MainWindow::MainWindow(QWidget *parent)
     editModeLabel->setContentsMargins(10, 0, 0, 0);
     editModeLabel->setVisible(false);
 
+    savingLabel = new QLabel("Saving...");
+    savingLabel->setAlignment(Qt::AlignHCenter);
+    savingLabel->setContentsMargins(0, 0, 0, 0);
+    savingLabel->setVisible(false);
+
     numNotesLabel = new QLabel("Notes: 0");
     numNotesLabel->setAlignment(Qt::AlignRight);
     numNotesLabel->setContentsMargins(0, 0, 10, 0);
 
     infoLayout = new QHBoxLayout;
     infoLayout->addWidget(editModeLabel);
+    infoLayout->addWidget(savingLabel);
     infoLayout->addWidget(numNotesLabel);
 
     layout = new QVBoxLayout;
@@ -84,6 +89,10 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow(){
     delete ui;
+}
+
+void MainWindow::displaySaving(){
+    savingLabel->setVisible(false);
 }
 
 void MainWindow::clearNotes(){
@@ -197,10 +206,9 @@ void MainWindow::openFile(){
     QFileDialog fileDialog(this, Qt::Dialog);
     currentFileName = QFileDialog::getOpenFileName(this,
         tr("Open File"), "/Andres/Text-Files", tr("Text Files (*.txt)"));
-    if(currentFileName != "")
-        currentFile.setFileName(currentFileName);
-    else
+    if(currentFileName.isEmpty())
         return;
+    currentFile.setFileName(currentFileName);
     fileLabelMsg = QString("Current Selected File: %1").arg(currentFileName);
     fileLabel->setText(fileLabelMsg);
 
@@ -241,8 +249,7 @@ void MainWindow:: saveFile(){
     qDebug() << "saveFile";
 
     if (!currentFile.open(QIODevice::WriteOnly)) {
-        QMessageBox::information(this, tr("No file to save"),
-            currentFile.errorString());
+        saveToFile();
         return;
     }
     QTextStream out(&currentFile);
@@ -258,6 +265,9 @@ void MainWindow:: saveFile(){
     }
     out << notes.join("");
     currentFile.close();
+
+    savingLabel->setVisible(true);
+    QTimer::singleShot(500, this, &MainWindow::displaySaving);
 }
 
 void MainWindow::saveToFile(){
@@ -297,14 +307,20 @@ void MainWindow::newFile(){
 void MainWindow::createActions(){
     newFileAct = new QAction(tr("&New"));
     newFileAct->setStatusTip(tr("Create a new file"));
+    newFileShortcut = new QKeySequence(tr("Ctrl+N"));
+    newFileAct->setShortcut(*newFileShortcut);
     connect(newFileAct, &QAction::triggered, this, &MainWindow::newFile);
 
     openFileAct = new QAction(tr("&Open"));
     openFileAct->setStatusTip(tr("Open a file"));
+    openFileShortcut = new QKeySequence(tr("Ctrl+O"));
+    openFileAct->setShortcut(*openFileShortcut);
     connect(openFileAct, &QAction::triggered, this, &MainWindow::openFile);
 
     saveFileAct = new QAction(tr("&Save"));
     saveFileAct->setStatusTip(tr("Save a file"));
+    saveFileShortcut = new QKeySequence(tr("Ctrl+S"));
+    saveFileAct->setShortcut(*saveFileShortcut);
     connect(saveFileAct, &QAction::triggered, this, &MainWindow::saveFile);
 
     saveAsFileAct = new QAction(tr("&Save As"));
